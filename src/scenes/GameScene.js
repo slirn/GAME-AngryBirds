@@ -23,6 +23,7 @@ export class GameScene extends Phaser.Scene {
         this.launchIndicator = null;
         this.scoreText = null;
         this.birdsText = null;
+        this.velocityMultiplier = 0.5;
     }
 
     create() {
@@ -45,12 +46,13 @@ export class GameScene extends Phaser.Scene {
     }
 
     setupWorld() {
-        this.matter.world.setBounds(0, 0, 1280, 720);
+        this.matter.world.disableGravity();
         this.matter.world.setGravity(0, 1);
         
         const ground = this.matter.add.rectangle(640, 710, 1280, 40, {
             isStatic: true,
-            label: 'ground'
+            label: 'ground',
+            friction: 0.8
         });
     }
 
@@ -174,7 +176,6 @@ export class GameScene extends Phaser.Scene {
         
         if (isInside) {
             this.isDragging = true;
-            this.currentBird.setStatic(true);
             console.log('Started dragging');
         }
     }
@@ -200,7 +201,11 @@ export class GameScene extends Phaser.Scene {
             newX = this.launchPosition.x - Math.abs(newX - this.launchPosition.x);
         }
         
-        this.currentBird.setPosition(newX, newY);
+        this.currentBird.x = newX;
+        this.currentBird.y = newY;
+        this.currentBird.body.position.x = newX;
+        this.currentBird.body.position.y = newY;
+        
         this.drawLaunchTrajectory();
     }
 
@@ -218,13 +223,16 @@ export class GameScene extends Phaser.Scene {
         console.log('Launch delta:', dx, dy);
         
         if (Math.abs(dx) < 10 && Math.abs(dy) < 10) {
-            this.currentBird.setPosition(this.launchPosition.x, this.launchPosition.y);
+            this.currentBird.x = this.launchPosition.x;
+            this.currentBird.y = this.launchPosition.y;
+            this.currentBird.body.position.x = this.launchPosition.x;
+            this.currentBird.body.position.y = this.launchPosition.y;
             console.log('Not enough pull, resetting');
             return;
         }
         
-        console.log('Launching bird with velocity:', dx * 15, dy * 15);
-        this.currentBird.launch(dx * 15, dy * 15);
+        console.log('Launching bird with velocity:', dx * this.velocityMultiplier, dy * this.velocityMultiplier);
+        this.currentBird.launch(dx * this.velocityMultiplier, dy * this.velocityMultiplier);
         this.birdsRemaining--;
         this.updateBirdsUI();
         
@@ -239,20 +247,24 @@ export class GameScene extends Phaser.Scene {
         if (!this.currentBird) return;
         
         this.launchIndicator.clear();
-        this.launchIndicator.lineStyle(2, 0x000000, 0.5);
         
         const dx = this.launchPosition.x - this.currentBird.x;
         const dy = this.launchPosition.y - this.currentBird.y;
         
-        for (let i = 0; i < 30; i++) {
-            const t = i * 0.1;
-            const x = this.launchPosition.x + dx * t * 2;
-            const y = this.launchPosition.y + dy * t * 2 + 0.5 * 9.8 * t * t * 10;
+        const vx = dx * this.velocityMultiplier * this.currentBird.power;
+        const vy = dy * this.velocityMultiplier * this.currentBird.power;
+        const gravity = 1;
+        const pixelPerMeter = 60;
+        
+        for (let i = 0; i < 50; i++) {
+            const t = i * 0.05;
+            const x = this.launchPosition.x + vx * t * pixelPerMeter;
+            const y = this.launchPosition.y + vy * t * pixelPerMeter + 0.5 * gravity * t * t * pixelPerMeter;
             
-            if (y > 700) break;
+            if (y > 700 || x > 1300) break;
             
-            this.launchIndicator.fillStyle(0x000000, 0.3);
-            this.launchIndicator.fillCircle(x, y, 3);
+            this.launchIndicator.fillStyle(0xffffff, 0.6);
+            this.launchIndicator.fillCircle(x, y, 4);
         }
     }
 

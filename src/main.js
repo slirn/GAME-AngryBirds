@@ -15,8 +15,8 @@ const config = {
         default: 'matter',
         matter: {
             gravity: { y: 1 },
-            debug: false,
-            enableSleeping: true
+            debug: true,
+            enableSleeping: false
         }
     },
     scene: [PreloadScene, MenuScene, LevelSelectScene, GameScene, GameOverScene],

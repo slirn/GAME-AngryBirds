@@ -7,7 +7,7 @@ export const GAME_CONFIG = {
         slingshot: {
             x: 200,
             y: 500,
-            maxStretch: 100,
+            maxStretch: 150,
             elasticity: 0.8
         }
     },
