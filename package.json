@@ -1,0 +1,21 @@
+{
+  "name": "angrybirds",
+  "version": "1.0.0",
+  "description": "愤怒的小鸟 - Phaser 3 + Matter.js 物理引擎游戏",
+  "main": "src/main.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "keywords": ["phaser", "game", "angry-birds", "matter-js"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "matter-js": "^0.20.0",
+    "phaser": "^3.90.0"
+  },
+  "devDependencies": {
+    "vite": "^7.3.1"
+  }
+}
