@@ -18,6 +18,7 @@ function generateBirdTextures(scene) {
     
     Object.entries(birdColors).forEach(([name, color]) => {
         const graphics = scene.make.graphics();
+        
         graphics.fillStyle(color);
         graphics.fillCircle(20, 20, 18);
         graphics.lineStyle(2, 0x000000);
@@ -32,6 +33,8 @@ function generateBirdTextures(scene) {
         
         graphics.generateTexture('bird_' + name, 40, 40);
         graphics.destroy();
+        
+        console.log('Generated bird texture: bird_' + name);
     });
 }
 

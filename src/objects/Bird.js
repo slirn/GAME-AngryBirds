@@ -11,7 +11,10 @@ export class Bird extends Phaser.Physics.Matter.Sprite {
         this.special = config.special;
         this.power = config.power;
         
-        this.setCircle(20);
+        this.setScale(0.5);
+        this.setOrigin(0.5, 0.5);
+        
+        const body = this.setCircle(15);
         this.setBounce(0.6);
         this.setFriction(0.05);
         this.setDensity(0.004);
@@ -20,21 +23,18 @@ export class Bird extends Phaser.Physics.Matter.Sprite {
         this.setData('type', 'bird');
         this.setData('special', this.special);
         
-        this.setOnCollide(() => {
-            if (this.isLaunched) {
-                this.onCollision();
-            }
-        });
+        console.log('Bird created at:', x, y, 'type:', config.name);
+        console.log('Bird display size:', this.displayWidth, this.displayHeight);
     }
 
     launch(velocityX, velocityY) {
+        console.log('Launch called with velocity:', velocityX, velocityY);
+        
         this.setStatic(false);
         this.setVelocity(velocityX * this.power, velocityY * this.power);
         this.isLaunched = true;
         
-        if (this.scene.sound.get('launch')) {
-            this.scene.sound.play('launch');
-        }
+        console.log('Bird launched, isLaunched:', this.isLaunched);
     }
 
     onCollision() {

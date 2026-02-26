@@ -7,30 +7,41 @@ import { Block } from '../objects/Block.js';
 export class GameScene extends Phaser.Scene {
     constructor() {
         super({ key: 'GameScene' });
-        this.currentBird = null;
-        this.birds = [];
-        this.pigs = [];
-        this.blocks = [];
-        this.isDragging = false;
-        this.launchPosition = { x: 200, y: 500 };
-        this.score = 0;
-        this.birdsRemaining = 0;
     }
 
     init(data) {
         this.levelId = data.levelId || 1;
         this.score = 0;
+        this.currentBird = null;
+        this.birds = [];
+        this.pigs = [];
+        this.blocks = [];
+        this.birdTypes = [];
+        this.isDragging = false;
+        this.launchPosition = { x: 200, y: 500 };
+        this.birdsRemaining = 0;
+        this.launchIndicator = null;
+        this.scoreText = null;
+        this.birdsText = null;
     }
 
     create() {
-        this.setupWorld();
-        this.createBackground();
-        this.createSlingshot();
-        this.loadLevel(this.levelId);
-        this.setupInput();
-        this.createUI();
-        
-        this.matter.world.on('collisionstart', this.handleCollision, this);
+        try {
+            this.setupWorld();
+            this.createBackground();
+            this.createSlingshot();
+            this.createUI();
+            this.loadLevel(this.levelId);
+            this.setupInput();
+            
+            this.matter.world.on('collisionstart', this.handleCollision, this);
+        } catch (error) {
+            console.error('GameScene create error:', error);
+            this.add.text(400, 300, '加载关卡失败: ' + error.message, {
+                fontSize: '24px',
+                color: '#ff0000'
+            }).setOrigin(0.5);
+        }
     }
 
     setupWorld() {
@@ -82,17 +93,21 @@ export class GameScene extends Phaser.Scene {
     }
 
     createDemoLevel() {
-        const pigConfig = GAME_CONFIG.pigs.types[0];
-        const pig1 = new Pig(this, 900, 600, pigConfig);
-        const pig2 = new Pig(this, 1000, 600, pigConfig);
-        const pig3 = new Pig(this, 950, 500, pigConfig);
-        this.pigs.push(pig1, pig2, pig3);
-        
-        const woodConfig = GAME_CONFIG.blocks.types[0];
-        const block1 = new Block(this, 850, 600, 20, 100, woodConfig);
-        const block2 = new Block(this, 1050, 600, 20, 100, woodConfig);
-        const block3 = new Block(this, 950, 520, 220, 20, woodConfig);
-        this.blocks.push(block1, block2, block3);
+        try {
+            const pigConfig = GAME_CONFIG.pigs.types[0];
+            const pig1 = new Pig(this, 900, 600, pigConfig);
+            const pig2 = new Pig(this, 1000, 600, pigConfig);
+            const pig3 = new Pig(this, 950, 500, pigConfig);
+            this.pigs.push(pig1, pig2, pig3);
+            
+            const woodConfig = GAME_CONFIG.blocks.types[0];
+            const block1 = new Block(this, 850, 600, 20, 100, woodConfig);
+            const block2 = new Block(this, 1050, 600, 20, 100, woodConfig);
+            const block3 = new Block(this, 950, 520, 220, 20, woodConfig);
+            this.blocks.push(block1, block2, block3);
+        } catch (error) {
+            console.error('Failed to create demo level:', error);
+        }
     }
 
     spawnNextBird() {
@@ -104,15 +119,32 @@ export class GameScene extends Phaser.Scene {
         const birdType = this.birdTypes.shift();
         const birdConfig = GAME_CONFIG.birds.types.find(b => b.name === birdType);
         
-        this.currentBird = new Bird(
-            this,
-            this.launchPosition.x,
-            this.launchPosition.y,
-            birdConfig
-        );
+        if (!birdConfig) {
+            console.error('Bird config not found for type:', birdType);
+            return;
+        }
         
-        this.birds.push(this.currentBird);
-        this.updateBirdsUI();
+        console.log('Spawning bird:', birdType, 'at', this.launchPosition.x, this.launchPosition.y);
+        
+        try {
+            this.currentBird = new Bird(
+                this,
+                this.launchPosition.x,
+                this.launchPosition.y,
+                birdConfig
+            );
+            
+            this.currentBird.setDepth(100);
+            this.currentBird.setAlpha(1);
+            
+            console.log('Bird spawned successfully:', this.currentBird.x, this.currentBird.y);
+            console.log('Bird visible:', this.currentBird.visible, 'Bird active:', this.currentBird.active);
+            
+            this.birds.push(this.currentBird);
+            this.updateBirdsUI();
+        } catch (error) {
+            console.error('Failed to create bird:', error);
+        }
     }
 
     setupInput() {
@@ -122,16 +154,28 @@ export class GameScene extends Phaser.Scene {
     }
 
     onPointerDown(pointer) {
-        if (!this.currentBird || this.currentBird.isLaunched) return;
+        console.log('Pointer down at:', pointer.x, pointer.y);
         
-        const distance = Phaser.Math.Distance.Between(
-            pointer.x, pointer.y,
-            this.currentBird.x, this.currentBird.y
-        );
+        if (!this.currentBird) {
+            console.log('No current bird');
+            return;
+        }
         
-        if (distance < 50) {
+        if (this.currentBird.isLaunched) {
+            console.log('Bird already launched');
+            return;
+        }
+        
+        const birdBounds = this.currentBird.getBounds();
+        const isInside = Phaser.Geom.Rectangle.Contains(birdBounds, pointer.x, pointer.y);
+        
+        console.log('Bird bounds:', birdBounds.x, birdBounds.y, birdBounds.width, birdBounds.height);
+        console.log('Is inside bird:', isInside);
+        
+        if (isInside) {
             this.isDragging = true;
             this.currentBird.setStatic(true);
+            console.log('Started dragging');
         }
     }
 
@@ -161,6 +205,8 @@ export class GameScene extends Phaser.Scene {
     }
 
     onPointerUp(pointer) {
+        console.log('Pointer up, isDragging:', this.isDragging);
+        
         if (!this.isDragging || !this.currentBird) return;
         
         this.isDragging = false;
@@ -169,11 +215,15 @@ export class GameScene extends Phaser.Scene {
         const dx = this.launchPosition.x - this.currentBird.x;
         const dy = this.launchPosition.y - this.currentBird.y;
         
+        console.log('Launch delta:', dx, dy);
+        
         if (Math.abs(dx) < 10 && Math.abs(dy) < 10) {
             this.currentBird.setPosition(this.launchPosition.x, this.launchPosition.y);
+            console.log('Not enough pull, resetting');
             return;
         }
         
+        console.log('Launching bird with velocity:', dx * 15, dy * 15);
         this.currentBird.launch(dx * 15, dy * 15);
         this.birdsRemaining--;
         this.updateBirdsUI();
@@ -262,7 +312,9 @@ export class GameScene extends Phaser.Scene {
     }
 
     updateBirdsUI() {
-        this.birdsText.setText(`剩余小鸟: ${this.birdsRemaining}`);
+        if (this.birdsText) {
+            this.birdsText.setText(`剩余小鸟: ${this.birdsRemaining}`);
+        }
     }
 
     updateScore(points) {

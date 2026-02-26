@@ -11,6 +11,8 @@ export class Pig extends Phaser.Physics.Matter.Sprite {
         this.maxHealth = config.health;
         this.score = config.score;
         
+        this.setOrigin(0.5, 0.5);
+        this.setScale(0.8);
         this.setCircle(config.radius);
         this.setBounce(0.3);
         this.setFriction(0.5);
@@ -21,6 +23,8 @@ export class Pig extends Phaser.Physics.Matter.Sprite {
         this.setData('health', this.health);
         
         this.createHealthBar();
+        
+        console.log('Pig created:', config.name, 'at', x, y);
     }
 
     createHealthBar() {

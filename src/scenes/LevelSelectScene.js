@@ -67,6 +67,7 @@ export class LevelSelectScene extends Phaser.Scene {
             button.on('pointerover', () => button.setFillStyle(0x2ecc71));
             button.on('pointerout', () => button.setFillStyle(0x27ae60));
             button.on('pointerdown', () => {
+                console.log('Starting level:', level.id);
                 this.scene.start('GameScene', { levelId: level.id });
             });
         } else {

@@ -1,5 +1,4 @@
 import Phaser from 'phaser';
-import { generatePlaceholderAssets } from '../utils/placeholderAssets.js';
 
 export class PreloadScene extends Phaser.Scene {
     constructor() {
@@ -8,6 +7,7 @@ export class PreloadScene extends Phaser.Scene {
 
     preload() {
         this.createLoadingBar();
+        this.loadAssets();
     }
 
     createLoadingBar() {
@@ -29,18 +29,14 @@ export class PreloadScene extends Phaser.Scene {
             fill: '#ffffff'
         }).setOrigin(0.5);
         
-        let progress = 0;
-        const progressInterval = setInterval(() => {
-            progress += 0.1;
-            if (progress > 1) progress = 1;
+        this.load.on('progress', (value) => {
             progressBar.clear();
             progressBar.fillStyle(0xe74c3c, 1);
-            progressBar.fillRect(width / 2 - 150, height / 2 - 15, 300 * progress, 30);
-            percentText.setText(parseInt(progress * 100) + '%');
-        }, 100);
+            progressBar.fillRect(width / 2 - 150, height / 2 - 15, 300 * value, 30);
+            percentText.setText(parseInt(value * 100) + '%');
+        });
         
         this.load.on('complete', () => {
-            clearInterval(progressInterval);
             progressBar.destroy();
             progressBox.destroy();
             loadingText.destroy();
@@ -48,8 +44,28 @@ export class PreloadScene extends Phaser.Scene {
         });
     }
 
+    loadAssets() {
+        this.load.image('background', 'assets/images/backgrounds/bg_sky.png');
+        this.load.image('slingshot', 'assets/images/ui/slingshot.png');
+        
+        this.load.image('bird_red', 'assets/images/birds/bird_red.png');
+        this.load.image('bird_yellow', 'assets/images/birds/bird_yellow.png');
+        this.load.image('bird_blue', 'assets/images/birds/bird_blue.png');
+        this.load.image('bird_black', 'assets/images/birds/bird_black.png');
+        this.load.image('bird_white', 'assets/images/birds/bird_white.png');
+        
+        this.load.image('pig_small', 'assets/images/pigs/pig_small.png');
+        this.load.image('pig_medium', 'assets/images/pigs/pig_medium.png');
+        this.load.image('pig_large', 'assets/images/pigs/pig_large.png');
+        this.load.image('pig_king', 'assets/images/pigs/pig_king.png');
+        
+        this.load.image('block_wood', 'assets/images/blocks/wood.png');
+        this.load.image('block_glass', 'assets/images/blocks/glass.png');
+        this.load.image('block_stone', 'assets/images/blocks/stone.png');
+    }
+
     create() {
-        generatePlaceholderAssets(this);
+        console.log('All assets loaded, starting game...');
         this.scene.start('MenuScene');
     }
 }
