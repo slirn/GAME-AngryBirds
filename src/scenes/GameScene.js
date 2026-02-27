@@ -10,7 +10,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     init(data) {
-        this.levelId = data.levelId || 1;
+        this.levelId = (data && data.levelId) ? data.levelId : 1;
         this.score = 0;
         this.currentBird = null;
         this.birds = [];
@@ -18,8 +18,10 @@ export class GameScene extends Phaser.Scene {
         this.blocks = [];
         this.birdTypes = [];
         this.isDragging = false;
-        this.launchPosition = { x: 200, y: 500 };
+        this.launchPosition = { x: 200, y: 540 };
         this.birdsRemaining = 0;
+        this.birdQueue = [];
+        this.currentLevel = null;
         this.launchIndicator = null;
         this.scoreText = null;
         this.birdsText = null;
@@ -54,6 +56,16 @@ export class GameScene extends Phaser.Scene {
             label: 'ground',
             friction: 0.8
         });
+        
+        const leftWall = this.matter.add.rectangle(-10, 360, 20, 720, {
+            isStatic: true,
+            label: 'wall'
+        });
+        
+        const rightWall = this.matter.add.rectangle(1290, 360, 20, 720, {
+            isStatic: true,
+            label: 'wall'
+        });
     }
 
     createBackground() {
@@ -76,40 +88,291 @@ export class GameScene extends Phaser.Scene {
     }
 
     createSlingshot() {
-        this.add.rectangle(this.launchPosition.x - 10, this.launchPosition.y + 50, 15, 100, 0x8B4513);
-        this.add.rectangle(this.launchPosition.x + 10, this.launchPosition.y + 50, 15, 100, 0x8B4513);
+        const groundY = 680;
+        const slingshotHeight = 120;
+        const slingshotY = groundY - slingshotHeight / 2;
+        
+        this.add.rectangle(this.launchPosition.x - 15, slingshotY, 12, slingshotHeight, 0x5D3A1A);
+        this.add.rectangle(this.launchPosition.x + 15, slingshotY, 12, slingshotHeight, 0x5D3A1A);
+        
+        this.add.rectangle(this.launchPosition.x, groundY - 5, 50, 10, 0x4A2A0A);
+        
+        this.launchPosition.y = groundY - slingshotHeight - 20;
         
         this.launchIndicator = this.add.graphics();
     }
 
     loadLevel(levelId) {
+        console.log('Loading level:', levelId);
+        
         const level = GAME_CONFIG.levels.find(l => l.id === levelId);
-        if (!level) return;
+        if (!level) {
+            console.error('Level not found:', levelId);
+            return;
+        }
         
-        this.birdsRemaining = level.birds.length;
-        this.birdTypes = [...level.birds];
+        this.currentLevel = level;
         
-        this.createDemoLevel();
-        
-        this.spawnNextBird();
+        try {
+            const layoutData = this.generateRandomLayout(levelId);
+            console.log('Layout data:', layoutData);
+            
+            if (!layoutData || !layoutData.birdTypes || layoutData.birdTypes.length === 0) {
+                console.error('Invalid layout data');
+                return;
+            }
+            
+            this.birdsRemaining = layoutData.birdCount;
+            this.birdTypes = [...layoutData.birdTypes];
+            
+            this.spawnNextBird();
+        } catch (error) {
+            console.error('Error generating layout:', error);
+        }
     }
 
-    createDemoLevel() {
-        try {
-            const pigConfig = GAME_CONFIG.pigs.types[0];
-            const pig1 = new Pig(this, 900, 600, pigConfig);
-            const pig2 = new Pig(this, 1000, 600, pigConfig);
-            const pig3 = new Pig(this, 950, 500, pigConfig);
-            this.pigs.push(pig1, pig2, pig3);
+    generateRandomLayout(levelId) {
+        const difficulty = Math.min(levelId, 10);
+        
+        const minPigs = 2 + Math.floor(difficulty / 3);
+        const maxPigs = 3 + Math.floor(difficulty / 2);
+        const pigCount = minPigs + Math.floor(Math.random() * (maxPigs - minPigs + 1));
+        
+        const minBlocks = 6 + difficulty;
+        const maxBlocks = 12 + difficulty * 2;
+        const blockCount = minBlocks + Math.floor(Math.random() * (maxBlocks - minBlocks + 1));
+        
+        const birdCount = Math.max(2, Math.ceil(pigCount * 0.8 + blockCount * 0.15));
+        
+        const birdTypes = this.generateBirdTypes(birdCount, difficulty);
+        
+        const pigTypes = ['small', 'small', 'medium', 'medium', 'large'];
+        if (difficulty >= 7) pigTypes.push('king');
+        const blockTypes = ['wood', 'wood', 'glass'];
+        if (difficulty >= 3) blockTypes.push('stone');
+        
+        const pigPositions = this.generatePigPositions(pigCount);
+        pigPositions.forEach((pos, index) => {
+            let pigTypeName;
+            if (difficulty <= 2) {
+                pigTypeName = index < pigCount / 2 ? 'small' : 'medium';
+            } else if (difficulty <= 5) {
+                pigTypeName = pigTypes[Math.floor(Math.random() * 3)];
+            } else {
+                pigTypeName = pigTypes[Math.floor(Math.random() * pigTypes.length)];
+            }
             
-            const woodConfig = GAME_CONFIG.blocks.types[0];
-            const block1 = new Block(this, 850, 600, 20, 100, woodConfig);
-            const block2 = new Block(this, 1050, 600, 20, 100, woodConfig);
-            const block3 = new Block(this, 950, 520, 220, 20, woodConfig);
-            this.blocks.push(block1, block2, block3);
-        } catch (error) {
-            console.error('Failed to create demo level:', error);
+            const pigConfig = GAME_CONFIG.pigs.types.find(p => p.name === pigTypeName);
+            if (pigConfig) {
+                const pig = new Pig(this, pos.x, pos.y, pigConfig);
+                this.pigs.push(pig);
+            }
+        });
+        
+        const blockPositions = this.generateComplexBlockPositions(blockCount, pigPositions, difficulty);
+        blockPositions.forEach(pos => {
+            const blockTypeName = difficulty <= 2 ? 'wood' : blockTypes[Math.floor(Math.random() * blockTypes.length)];
+            const blockConfig = GAME_CONFIG.blocks.types.find(b => b.name === blockTypeName);
+            if (blockConfig) {
+                const block = new Block(this, pos.x, pos.y, pos.width, pos.height, blockConfig);
+                this.blocks.push(block);
+            }
+        });
+        
+        return { birdCount, birdTypes };
+    }
+
+    generateBirdTypes(count, difficulty) {
+        const types = [];
+        const availableBirds = ['red'];
+        
+        if (difficulty >= 2) availableBirds.push('yellow');
+        if (difficulty >= 3) availableBirds.push('blue');
+        if (difficulty >= 5) availableBirds.push('black');
+        if (difficulty >= 8) availableBirds.push('white');
+        
+        for (let i = 0; i < count; i++) {
+            const birdType = availableBirds[Math.floor(Math.random() * availableBirds.length)];
+            types.push(birdType);
         }
+        
+        return types;
+    }
+
+    generateComplexBlockPositions(count, pigPositions, difficulty) {
+        const positions = [];
+        const baseX = 700;
+        const maxX = 1200;
+        const groundY = 640;
+        
+        const structureCount = Math.min(2 + Math.floor(difficulty / 3), 4);
+        const blocksPerStructure = Math.floor(count / structureCount);
+        
+        for (let s = 0; s < structureCount; s++) {
+            const structureX = baseX + (s * (maxX - baseX) / structureCount) + 30;
+            const structureBlocks = s === structureCount - 1 ? count - positions.length : blocksPerStructure;
+            
+            const nearPig = pigPositions.find(p => Math.abs(p.x - structureX) < 100);
+            if (nearPig) {
+                structureX = nearPig.x > structureX ? structureX - 80 : structureX + 80;
+            }
+            
+            this.generateStableStructure(positions, structureX, structureBlocks, groundY, pigPositions, difficulty);
+        }
+        
+        return positions;
+    }
+
+    generateStableStructure(positions, baseX, blockCount, groundY, pigPositions, difficulty) {
+        const maxLayers = Math.min(2 + Math.floor(difficulty / 2), 5);
+        const pillarWidth = 20;
+        const pillarHeight = 60;
+        const platformHeight = 20;
+        const platformWidth = 80;
+        
+        let currentY = groundY;
+        let layer = 0;
+        let usedBlocks = 0;
+        
+        while (usedBlocks < blockCount && layer < maxLayers) {
+            const pillar1X = baseX - 40;
+            const pillar2X = baseX + 40;
+            
+            if (!this.isNearPig(pillar1X, currentY - pillarHeight / 2, pigPositions, 70)) {
+                positions.push({ x: pillar1X, y: currentY - pillarHeight / 2, width: pillarWidth, height: pillarHeight });
+                usedBlocks++;
+            }
+            
+            if (usedBlocks < blockCount && !this.isNearPig(pillar2X, currentY - pillarHeight / 2, pigPositions, 70)) {
+                positions.push({ x: pillar2X, y: currentY - pillarHeight / 2, width: pillarWidth, height: pillarHeight });
+                usedBlocks++;
+            }
+            
+            currentY -= pillarHeight;
+            
+            if (usedBlocks < blockCount) {
+                const platformX = baseX;
+                const platformY = currentY - platformHeight / 2;
+                
+                if (!this.isNearPig(platformX, platformY, pigPositions, 60)) {
+                    positions.push({ x: platformX, y: platformY, width: platformWidth, height: platformHeight });
+                    usedBlocks++;
+                }
+            }
+            
+            currentY -= platformHeight;
+            layer++;
+        }
+        
+        while (usedBlocks < blockCount) {
+            const offsetX = (Math.random() - 0.5) * 200;
+            const x = baseX + offsetX;
+            const y = groundY - 30 - Math.random() * 100;
+            
+            if (x < 650 || x > 1250) continue;
+            if (this.isNearPig(x, y, pigPositions, 80)) continue;
+            
+            const isVertical = Math.random() > 0.5;
+            const width = isVertical ? 20 : 60;
+            const height = isVertical ? 60 : 20;
+            
+            positions.push({ x, y, width, height });
+            usedBlocks++;
+        }
+    }
+
+    isNearPig(x, y, pigPositions, minDistance) {
+        for (const pigPos of pigPositions) {
+            const distance = Math.sqrt((x - pigPos.x) ** 2 + (y - pigPos.y) ** 2);
+            if (distance < minDistance) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    generatePigPositions(count) {
+        const positions = [];
+        const minX = 700;
+        const maxX = 1200;
+        const groundY = 640;
+        const minDistance = 80;
+        
+        for (let i = 0; i < count; i++) {
+            let attempts = 0;
+            let validPosition = false;
+            let x, y;
+            
+            while (!validPosition && attempts < 50) {
+                x = minX + Math.random() * (maxX - minX);
+                y = groundY;
+                
+                validPosition = true;
+                for (const pos of positions) {
+                    const distance = Math.abs(x - pos.x);
+                    if (distance < minDistance) {
+                        validPosition = false;
+                        break;
+                    }
+                }
+                attempts++;
+            }
+            
+            if (validPosition) {
+                positions.push({ x, y });
+            }
+        }
+        
+        return positions;
+    }
+
+    generateBlockPositions(count, pigPositions) {
+        const positions = [];
+        const minX = 650;
+        const maxX = 1250;
+        const minY = 500;
+        const maxY = 650;
+        const minDistance = 50;
+        const pigSafeDistance = 60;
+        
+        for (let i = 0; i < count; i++) {
+            let attempts = 0;
+            let validPosition = false;
+            let x, y;
+            
+            while (!validPosition && attempts < 100) {
+                x = minX + Math.random() * (maxX - minX);
+                y = minY + Math.random() * (maxY - minY);
+                
+                validPosition = true;
+                
+                for (const pos of positions) {
+                    const distance = Math.sqrt((x - pos.x) ** 2 + (y - pos.y) ** 2);
+                    if (distance < minDistance) {
+                        validPosition = false;
+                        break;
+                    }
+                }
+                
+                if (validPosition) {
+                    for (const pigPos of pigPositions) {
+                        const distance = Math.sqrt((x - pigPos.x) ** 2 + (y - pigPos.y) ** 2);
+                        if (distance < pigSafeDistance && y > pigPos.y - 50) {
+                            validPosition = false;
+                            break;
+                        }
+                    }
+                }
+                
+                attempts++;
+            }
+            
+            if (validPosition) {
+                positions.push({ x, y });
+            }
+        }
+        
+        return positions;
     }
 
     spawnNextBird() {
@@ -144,9 +407,35 @@ export class GameScene extends Phaser.Scene {
             
             this.birds.push(this.currentBird);
             this.updateBirdsUI();
+            this.updateBirdQueue();
         } catch (error) {
             console.error('Failed to create bird:', error);
         }
+    }
+
+    updateBirdQueue() {
+        if (this.birdQueue) {
+            this.birdQueue.forEach(bird => bird.destroy());
+        }
+        this.birdQueue = [];
+        
+        const startX = 80;
+        const startY = 665;
+        const spacing = 45;
+        
+        this.birdTypes.forEach((birdType, index) => {
+            const birdConfig = GAME_CONFIG.birds.types.find(b => b.name === birdType);
+            if (birdConfig) {
+                const queueBird = this.add.image(
+                    startX + index * spacing,
+                    startY,
+                    'bird_' + birdType
+                );
+                queueBird.setScale(0.4);
+                queueBird.setDepth(50);
+                this.birdQueue.push(queueBird);
+            }
+        });
     }
 
     setupInput() {
@@ -164,7 +453,25 @@ export class GameScene extends Phaser.Scene {
         }
         
         if (this.currentBird.isLaunched) {
-            console.log('Bird already launched');
+            if (this.currentBird.special === 'speed' && !this.currentBird.specialUsed) {
+                this.currentBird.boostSpeed(1.2);
+                this.currentBird.specialUsed = true;
+                console.log('Yellow bird speed boost activated!');
+            } else if (this.currentBird.special === 'split' && !this.currentBird.specialUsed) {
+                this.splitBird(this.currentBird);
+                this.currentBird.specialUsed = true;
+                console.log('Blue bird split activated!');
+            } else if (this.currentBird.special === 'explode' && !this.currentBird.specialUsed) {
+                const isOnGround = this.currentBird.y >= 620;
+                const birdBounds = this.currentBird.getBounds();
+                const isInsideBird = Phaser.Geom.Rectangle.Contains(birdBounds, pointer.x, pointer.y);
+                
+                if (!isOnGround || isInsideBird) {
+                    this.currentBird.explode();
+                    this.currentBird.specialUsed = true;
+                    console.log('Black bird explode activated!');
+                }
+            }
             return;
         }
         
@@ -178,6 +485,40 @@ export class GameScene extends Phaser.Scene {
             this.isDragging = true;
             console.log('Started dragging');
         }
+    }
+
+    splitBird(bird) {
+        const velocity = bird.body.velocity;
+        const x = bird.x;
+        const y = bird.y;
+        
+        bird.destroy();
+        
+        const angles = [-20, 0, 20];
+        angles.forEach((angleOffset, index) => {
+            const angle = Math.atan2(velocity.y, velocity.x) + (angleOffset * Math.PI / 180);
+            const speed = Math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
+            
+            const miniBird = new Bird(this, x, y - 20 + index * 20, {
+                name: 'blue',
+                power: 1,
+                special: null
+            });
+            
+            miniBird.setScale(0.4);
+            miniBird.setStatic(false);
+            miniBird.setVelocity(
+                Math.cos(angle) * speed,
+                Math.sin(angle) * speed
+            );
+            miniBird.isLaunched = true;
+            miniBird.setBounce(0.2);
+            miniBird.setFriction(0.3);
+            
+            this.birds.push(miniBird);
+        });
+        
+        this.currentBird = null;
     }
 
     onPointerMove(pointer) {
@@ -253,18 +594,23 @@ export class GameScene extends Phaser.Scene {
         
         const vx = dx * this.velocityMultiplier * this.currentBird.power;
         const vy = dy * this.velocityMultiplier * this.currentBird.power;
-        const gravity = 1;
-        const pixelPerMeter = 60;
         
-        for (let i = 0; i < 50; i++) {
-            const t = i * 0.05;
-            const x = this.launchPosition.x + vx * t * pixelPerMeter;
-            const y = this.launchPosition.y + vy * t * pixelPerMeter + 0.5 * gravity * t * t * pixelPerMeter;
+        let x = this.launchPosition.x;
+        let y = this.launchPosition.y;
+        let velX = vx;
+        let velY = vy;
+        const gravity = 0.1;
+        const timeStep = 3;
+        
+        for (let i = 0; i < 60; i++) {
+            velY += gravity * timeStep;
+            x += velX * timeStep;
+            y += velY * timeStep;
             
-            if (y > 700 || x > 1300) break;
+            if (y > 700 || x > 1300 || x < 0) break;
             
-            this.launchIndicator.fillStyle(0xffffff, 0.6);
-            this.launchIndicator.fillCircle(x, y, 4);
+            this.launchIndicator.fillStyle(0xffffff, 0.5);
+            this.launchIndicator.fillCircle(x, y, 3);
         }
     }
 

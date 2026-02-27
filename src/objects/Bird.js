@@ -10,35 +10,35 @@ export class Bird extends Phaser.Physics.Matter.Sprite {
         this.isLaunched = false;
         this.special = config.special;
         this.power = config.power;
+        this.specialUsed = false;
         
         this.setScale(0.5);
         this.setOrigin(0.5, 0.5);
         
         this.setCircle(15);
-        this.setBounce(0.6);
-        this.setFriction(0.05);
+        this.setBounce(0.2);
+        this.setFriction(0.3);
         this.setDensity(0.004);
         this.setStatic(true);
         
         this.setData('type', 'bird');
         this.setData('special', this.special);
-        
-        console.log('Bird created at:', x, y, 'type:', config.name);
     }
 
     launch(velocityX, velocityY) {
-        console.log('Launch called with velocity:', velocityX, velocityY);
-        
         this.isLaunched = true;
         this.setStatic(false);
         this.setVelocity(velocityX * this.power, velocityY * this.power);
+    }
+
+    preUpdate(time, delta) {
+        super.preUpdate(time, delta);
         
-        this.scene.time.delayedCall(100, () => {
-            console.log('After launch - position:', this.x, this.y);
-            console.log('Body velocity:', this.body.velocity.x, this.body.velocity.y);
-        });
-        
-        console.log('Bird launched, isLaunched:', this.isLaunched);
+        if (this.isLaunched && this.active) {
+            if (this.x < -50 || this.x > 1330 || this.y < -50 || this.y > 770) {
+                this.destroy();
+            }
+        }
     }
 
     onCollision() {
@@ -63,9 +63,17 @@ export class Bird extends Phaser.Physics.Matter.Sprite {
         }
     }
 
-    boostSpeed() {
+    boostSpeed(multiplier = 1.2) {
+        if (this.specialUsed) return;
+        this.specialUsed = true;
+        
         const velocity = this.body.velocity;
-        this.setVelocity(velocity.x * 2, velocity.y * 2);
+        this.setVelocity(velocity.x * multiplier, velocity.y * multiplier);
+        
+        this.setTint(0xffff00);
+        this.scene.time.delayedCall(100, () => {
+            if (this.active) this.clearTint();
+        });
     }
 
     split() {
@@ -93,16 +101,47 @@ export class Bird extends Phaser.Physics.Matter.Sprite {
     }
 
     explode() {
-        const explosionRadius = 100;
-        const explosionForce = 30;
+        if (this.specialUsed) return;
+        this.specialUsed = true;
         
-        this.scene.add.circle(this.x, this.y, explosionRadius, 0xff6600, 0.5);
+        const explosionRadius = 120;
+        const explosionForce = 25;
+        
+        const explosionCircle = this.scene.add.circle(this.x, this.y, 0, 0xff6600, 0.6);
+        this.scene.tweens.add({
+            targets: explosionCircle,
+            radius: explosionRadius,
+            alpha: 0,
+            duration: 300,
+            onComplete: () => explosionCircle.destroy()
+        });
+        
+        for (let i = 0; i < 12; i++) {
+            const angle = (i / 12) * Math.PI * 2;
+            const particle = this.scene.add.circle(
+                this.x + Math.cos(angle) * 20,
+                this.y + Math.sin(angle) * 20,
+                8,
+                0xff3300
+            );
+            
+            this.scene.tweens.add({
+                targets: particle,
+                x: particle.x + Math.cos(angle) * 60,
+                y: particle.y + Math.sin(angle) * 60,
+                alpha: 0,
+                scale: 0,
+                duration: 400,
+                onComplete: () => particle.destroy()
+            });
+        }
         
         this.scene.pigs.forEach(pig => {
             if (!pig || !pig.active) return;
             const distance = Phaser.Math.Distance.Between(this.x, this.y, pig.x, pig.y);
             if (distance < explosionRadius) {
-                pig.damage(50);
+                const damage = Math.max(10, 50 - distance * 0.3);
+                pig.damage(damage);
             }
         });
         
@@ -111,14 +150,18 @@ export class Bird extends Phaser.Physics.Matter.Sprite {
             const distance = Phaser.Math.Distance.Between(this.x, this.y, block.x, block.y);
             if (distance < explosionRadius) {
                 const angle = Phaser.Math.Angle.Between(this.x, this.y, block.x, block.y);
+                const force = explosionForce * (1 - distance / explosionRadius);
                 block.setVelocity(
-                    Math.cos(angle) * explosionForce,
-                    Math.sin(angle) * explosionForce
+                    Math.cos(angle) * force,
+                    Math.sin(angle) * force - 5
                 );
+                block.damage(10);
             }
         });
         
-        this.destroy();
+        this.scene.time.delayedCall(50, () => {
+            this.destroy();
+        });
     }
 
     dropEgg() {
