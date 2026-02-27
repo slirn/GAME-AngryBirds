@@ -40,6 +40,7 @@ export class GameOverScene extends Phaser.Scene {
         if (this.won) {
             this.drawStars(width / 2, 380);
             this.saveProgress();
+            this.createNextLevelArrow();
         }
         
         this.createButton(width / 2 - 120, 500, '重新开始', () => {
@@ -93,6 +94,43 @@ export class GameOverScene extends Phaser.Scene {
             unlocked.push(nextLevel);
             localStorage.setItem(STORAGE_KEYS.unlockedLevels, JSON.stringify(unlocked));
         }
+        
+        // 检查是否完成了当前章节的所有关卡
+        this.checkChapterCompletion();
+    }
+    
+    checkChapterCompletion() {
+        const levelsPerChapter = 12;
+        const currentChapter = Math.ceil(this.levelId / levelsPerChapter);
+        
+        // 检查当前章节的所有关卡是否都已完成
+        const stored = localStorage.getItem(STORAGE_KEYS.highScores);
+        const highScores = stored ? JSON.parse(stored) : {};
+        
+        let chapterComplete = true;
+        for (let i = 1; i <= levelsPerChapter; i++) {
+            const levelId = (currentChapter - 1) * levelsPerChapter + i;
+            if (!highScores[levelId]) {
+                chapterComplete = false;
+                break;
+            }
+        }
+        
+        // 如果章节完成，解锁下一个章节
+        if (chapterComplete) {
+            this.unlockNextChapter(currentChapter);
+        }
+    }
+    
+    unlockNextChapter(currentChapterId) {
+        const stored = localStorage.getItem('unlockedChapters');
+        const unlocked = stored ? JSON.parse(stored) : [1];
+        const nextChapter = currentChapterId + 1;
+        
+        if (!unlocked.includes(nextChapter)) {
+            unlocked.push(nextChapter);
+            localStorage.setItem('unlockedChapters', JSON.stringify(unlocked));
+        }
     }
 
     createButton(x, y, text, callback) {
@@ -110,5 +148,34 @@ export class GameOverScene extends Phaser.Scene {
         button.on('pointerdown', callback);
         
         return button;
+    }
+    
+    createNextLevelArrow() {
+        const { width, height } = this.cameras.main;
+        
+        // 创建向右指的箭头
+        const arrow = this.add.polygon(
+            width - 80, // 屏幕右下角
+            height - 80,
+            [0, 0, 40, 20, 0, 40],
+            0x00ff00
+        );
+        arrow.setOrigin(0.5);
+        arrow.setDepth(100);
+        
+        // 添加动画效果
+        this.tweens.add({
+            targets: arrow,
+            x: width - 60,
+            duration: 800,
+            repeat: -1,
+            yoyo: true
+        });
+        
+        // 添加点击事件，点击箭头进入下一关
+        arrow.setInteractive({ useHandCursor: true });
+        arrow.on('pointerdown', () => {
+            this.scene.start('GameScene', { levelId: this.levelId + 1 });
+        });
     }
 }

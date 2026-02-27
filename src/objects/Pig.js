@@ -67,7 +67,8 @@ export class Pig extends Phaser.Physics.Matter.Sprite {
     }
 
     flash() {
-        this.setTint(0xff0000);
+        // 被打青的特效
+        this.setTint(0x87CEEB);
         this.scene.time.delayedCall(100, () => {
             this.clearTint();
         });
@@ -76,16 +77,30 @@ export class Pig extends Phaser.Physics.Matter.Sprite {
     die() {
         this.scene.updateScore(this.score);
         
-        if (this.scene.sound.get('pig_die')) {
-            this.scene.sound.play('pig_die');
-        }
-        
-        this.createDeathEffect();
+        this.showScoreText(5000);
         
         if (this.healthBar) this.healthBar.destroy();
         if (this.healthBarBg) this.healthBarBg.destroy();
         
         this.destroy();
+    }
+    
+    showScoreText(score) {
+        const scoreText = this.scene.add.text(this.x, this.y - 50, score.toString(), {
+            fontSize: '24px',
+            fontFamily: 'Arial',
+            color: '#ffffff',
+            stroke: '#000000',
+            strokeThickness: 3
+        });
+        
+        this.scene.tweens.add({
+            targets: scoreText,
+            y: this.y - 100,
+            alpha: 0,
+            duration: 3000,
+            onComplete: () => scoreText.destroy()
+        });
     }
 
     createDeathEffect() {

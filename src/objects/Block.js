@@ -80,6 +80,29 @@ export class Block extends Phaser.Physics.Matter.Sprite {
             duration: 100,
             yoyo: true
         });
+        
+        this.createCrackEffect();
+    }
+    
+    createCrackEffect() {
+        const crackGraphics = this.scene.add.graphics();
+        crackGraphics.setDepth(this.depth + 1);
+        
+        const crackCount = Phaser.Math.Between(1, 3);
+        
+        for (let i = 0; i < crackCount; i++) {
+            const startX = this.x - this.blockWidth / 2 + Math.random() * this.blockWidth;
+            const startY = this.y - this.blockHeight / 2 + Math.random() * this.blockHeight;
+            const endX = startX + (Math.random() - 0.5) * this.blockWidth;
+            const endY = startY + (Math.random() - 0.5) * this.blockHeight;
+            
+            crackGraphics.lineStyle(1, 0x000000, 0.8);
+            crackGraphics.lineBetween(startX, startY, endX, endY);
+        }
+        
+        this.scene.time.delayedCall(500, () => {
+            crackGraphics.destroy();
+        });
     }
 
     preUpdate(time, delta) {

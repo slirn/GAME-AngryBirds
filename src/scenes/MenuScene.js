@@ -31,7 +31,7 @@ export class MenuScene extends Phaser.Scene {
         });
         
         this.createButton(width / 2, 500, '设置', () => {
-            console.log('设置');
+            this.scene.start('SettingsScene');
         });
         
         this.add.text(width / 2, height - 50, 'Phaser 3 + Matter.js', {

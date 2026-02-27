@@ -33,9 +33,9 @@ export const GAME_CONFIG = {
     
     blocks: {
         types: [
-            { name: 'wood', density: 0.005, friction: 0.6, restitution: 0.3, health: 2 },
-            { name: 'glass', density: 0.003, friction: 0.4, restitution: 0.1, health: 1 },
-            { name: 'stone', density: 0.01, friction: 0.8, restitution: 0.2, health: 4 }
+            { name: 'wood', density: 0.002, friction: 0.6, restitution: 0.3, health: 2 },
+            { name: 'glass', density: 0.001, friction: 0.4, restitution: 0.1, health: 1 },
+            { name: 'stone', density: 0.005, friction: 0.8, restitution: 0.2, health: 4 }
         ]
     },
     
@@ -223,10 +223,10 @@ export const GAME_CONFIG = {
                 { type: 'wood', x: 1150, y: 560, width: 120, height: 20 }
             ]
         },
-        { 
-            id: 10, 
-            name: '第十关', 
-            birds: ['black', 'black', 'yellow', 'blue', 'red'], 
+        {
+            id: 10,
+            name: '第十关',
+            birds: ['black', 'black', 'yellow', 'blue', 'red'],
             stars: [1, 2, 3],
             pigs: [
                 { type: 'king', x: 950, y: 640 },
@@ -243,6 +243,60 @@ export const GAME_CONFIG = {
                 { type: 'stone', x: 1050, y: 580, width: 20, height: 100 },
                 { type: 'stone', x: 1150, y: 580, width: 20, height: 100 },
                 { type: 'stone', x: 1100, y: 520, width: 120, height: 20 }
+            ]
+        },
+        {
+            id: 11,
+            name: '第十一关',
+            birds: ['white', 'black', 'yellow', 'blue', 'red', 'red'],
+            stars: [1, 2, 3],
+            pigs: [
+                { type: 'king', x: 950, y: 640 },
+                { type: 'large', x: 800, y: 640 },
+                { type: 'large', x: 1100, y: 640 },
+                { type: 'medium', x: 700, y: 640 },
+                { type: 'medium', x: 1200, y: 640 }
+            ],
+            blocks: [
+                { type: 'stone', x: 650, y: 600, width: 20, height: 80 },
+                { type: 'stone', x: 750, y: 600, width: 20, height: 80 },
+                { type: 'stone', x: 700, y: 550, width: 120, height: 20 },
+                { type: 'stone', x: 850, y: 580, width: 20, height: 100 },
+                { type: 'stone', x: 950, y: 580, width: 20, height: 100 },
+                { type: 'stone', x: 900, y: 520, width: 120, height: 20 },
+                { type: 'stone', x: 1050, y: 580, width: 20, height: 100 },
+                { type: 'stone', x: 1150, y: 580, width: 20, height: 100 },
+                { type: 'stone', x: 1100, y: 520, width: 120, height: 20 },
+                { type: 'stone', x: 1200, y: 600, width: 20, height: 80 },
+                { type: 'stone', x: 1300, y: 600, width: 20, height: 80 },
+                { type: 'stone', x: 1250, y: 550, width: 120, height: 20 }
+            ]
+        },
+        {
+            id: 12,
+            name: '第十二关',
+            birds: ['white', 'black', 'black', 'yellow', 'blue', 'red', 'red'],
+            stars: [1, 2, 3],
+            pigs: [
+                { type: 'king', x: 950, y: 640 },
+                { type: 'king', x: 750, y: 640 },
+                { type: 'king', x: 1150, y: 640 },
+                { type: 'large', x: 850, y: 640 },
+                { type: 'large', x: 1050, y: 640 }
+            ],
+            blocks: [
+                { type: 'stone', x: 700, y: 580, width: 20, height: 100 },
+                { type: 'stone', x: 800, y: 580, width: 20, height: 100 },
+                { type: 'stone', x: 750, y: 520, width: 120, height: 20 },
+                { type: 'stone', x: 900, y: 580, width: 20, height: 100 },
+                { type: 'stone', x: 1000, y: 580, width: 20, height: 100 },
+                { type: 'stone', x: 950, y: 520, width: 120, height: 20 },
+                { type: 'stone', x: 1100, y: 580, width: 20, height: 100 },
+                { type: 'stone', x: 1200, y: 580, width: 20, height: 100 },
+                { type: 'stone', x: 1150, y: 520, width: 120, height: 20 },
+                { type: 'stone', x: 850, y: 480, width: 20, height: 80 },
+                { type: 'stone', x: 1050, y: 480, width: 20, height: 80 },
+                { type: 'stone', x: 950, y: 440, width: 220, height: 20 }
             ]
         }
     ],

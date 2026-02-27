@@ -105,14 +105,7 @@ export class GameScene extends Phaser.Scene {
     loadLevel(levelId) {
         console.log('Loading level:', levelId);
         
-        const level = GAME_CONFIG.levels.find(l => l.id === levelId);
-        if (!level) {
-            console.error('Level not found:', levelId);
-            return;
-        }
-        
-        this.currentLevel = level;
-        
+        // 对于超过12关的关卡，使用随机生成的布局
         try {
             const layoutData = this.generateRandomLayout(levelId);
             console.log('Layout data:', layoutData);
@@ -209,7 +202,7 @@ export class GameScene extends Phaser.Scene {
         const blocksPerStructure = Math.floor(count / structureCount);
         
         for (let s = 0; s < structureCount; s++) {
-            const structureX = baseX + (s * (maxX - baseX) / structureCount) + 30;
+            let structureX = baseX + (s * (maxX - baseX) / structureCount) + 30;
             const structureBlocks = s === structureCount - 1 ? count - positions.length : blocksPerStructure;
             
             const nearPig = pigPositions.find(p => Math.abs(p.x - structureX) < 100);
@@ -224,32 +217,54 @@ export class GameScene extends Phaser.Scene {
     }
 
     generateStableStructure(positions, baseX, blockCount, groundY, pigPositions, difficulty) {
-        const maxLayers = Math.min(2 + Math.floor(difficulty / 2), 5);
-        const pillarWidth = 20;
+        const maxLayers = Math.min(3 + Math.floor(difficulty / 2), 6); // 最多6层
+        const pillarWidth = 15;
         const pillarHeight = 60;
-        const platformHeight = 20;
-        const platformWidth = 80;
+        const platformHeight = 15;
+        const platformWidth = 120;
         
         let currentY = groundY;
         let layer = 0;
         let usedBlocks = 0;
         
+        // 生成多层结构
         while (usedBlocks < blockCount && layer < maxLayers) {
-            const pillar1X = baseX - 40;
-            const pillar2X = baseX + 40;
+            const layerHeight = pillarHeight + platformHeight;
             
-            if (!this.isNearPig(pillar1X, currentY - pillarHeight / 2, pigPositions, 70)) {
-                positions.push({ x: pillar1X, y: currentY - pillarHeight / 2, width: pillarWidth, height: pillarHeight });
-                usedBlocks++;
-            }
-            
-            if (usedBlocks < blockCount && !this.isNearPig(pillar2X, currentY - pillarHeight / 2, pigPositions, 70)) {
-                positions.push({ x: pillar2X, y: currentY - pillarHeight / 2, width: pillarWidth, height: pillarHeight });
-                usedBlocks++;
+            // 第一层（地面层）
+            if (layer === 0) {
+                // 四个角的支柱，更宽的基础
+                const pillars = [
+                    { x: baseX - 80, y: currentY - pillarHeight / 2 },
+                    { x: baseX - 40, y: currentY - pillarHeight / 2 },
+                    { x: baseX + 40, y: currentY - pillarHeight / 2 },
+                    { x: baseX + 80, y: currentY - pillarHeight / 2 }
+                ];
+                
+                for (const pillar of pillars) {
+                    if (usedBlocks < blockCount && !this.isNearPig(pillar.x, pillar.y, pigPositions, 70)) {
+                        positions.push({ x: pillar.x, y: pillar.y, width: pillarWidth, height: pillarHeight });
+                        usedBlocks++;
+                    }
+                }
+            } else {
+                // 上层的支柱，与下层对齐
+                const pillars = [
+                    { x: baseX - 80, y: currentY - pillarHeight / 2 },
+                    { x: baseX + 80, y: currentY - pillarHeight / 2 }
+                ];
+                
+                for (const pillar of pillars) {
+                    if (usedBlocks < blockCount && !this.isNearPig(pillar.x, pillar.y, pigPositions, 70)) {
+                        positions.push({ x: pillar.x, y: pillar.y, width: pillarWidth, height: pillarHeight });
+                        usedBlocks++;
+                    }
+                }
             }
             
             currentY -= pillarHeight;
             
+            // 平台
             if (usedBlocks < blockCount) {
                 const platformX = baseX;
                 const platformY = currentY - platformHeight / 2;
@@ -264,17 +279,30 @@ export class GameScene extends Phaser.Scene {
             layer++;
         }
         
+        // 添加横向连接支柱
+        if (usedBlocks < blockCount && layer > 1) {
+            const connectY = groundY - pillarHeight - platformHeight / 2;
+            const connectWidth = 120;
+            const connectHeight = 15;
+            
+            if (!this.isNearPig(baseX, connectY, pigPositions, 60)) {
+                positions.push({ x: baseX, y: connectY, width: connectWidth, height: connectHeight });
+                usedBlocks++;
+            }
+        }
+        
+        // 填充剩余的积木
         while (usedBlocks < blockCount) {
             const offsetX = (Math.random() - 0.5) * 200;
             const x = baseX + offsetX;
-            const y = groundY - 30 - Math.random() * 100;
+            const y = groundY - 30 - Math.random() * 200;
             
             if (x < 650 || x > 1250) continue;
             if (this.isNearPig(x, y, pigPositions, 80)) continue;
             
             const isVertical = Math.random() > 0.5;
-            const width = isVertical ? 20 : 60;
-            const height = isVertical ? 60 : 20;
+            const width = isVertical ? 15 : 60;
+            const height = isVertical ? 60 : 15;
             
             positions.push({ x, y, width, height });
             usedBlocks++;
@@ -434,7 +462,50 @@ export class GameScene extends Phaser.Scene {
                 queueBird.setScale(0.4);
                 queueBird.setDepth(50);
                 this.birdQueue.push(queueBird);
+                
+                // 显示10000分，颜色为鸟的颜色
+                const birdColor = this.getBirdColor(birdType);
+                const scoreText = this.add.text(
+                    startX + index * spacing,
+                    startY - 30,
+                    '10000',
+                    {
+                        fontSize: '16px',
+                        fontFamily: 'Arial',
+                        color: this.getColorHex(birdColor),
+                        stroke: '#000000',
+                        strokeThickness: 2
+                    }
+                );
+                scoreText.setOrigin(0.5);
+                scoreText.setDepth(51);
+                this.birdQueue.push(scoreText);
             }
+        });
+    }
+    
+    getColorHex(color) {
+        return '#' + color.toString(16).padStart(6, '0');
+    }
+    
+    createNextLevelArrow() {
+        // 创建向右指的箭头
+        const arrow = this.add.polygon(
+            1180, // 屏幕右下角
+            650,
+            [0, 0, 40, 20, 0, 40],
+            0x00ff00
+        );
+        arrow.setOrigin(0.5);
+        arrow.setDepth(100);
+        
+        // 添加动画效果
+        this.tweens.add({
+            targets: arrow,
+            x: 1200,
+            duration: 800,
+            repeat: -1,
+            yoyo: true
         });
     }
 
@@ -471,6 +542,9 @@ export class GameScene extends Phaser.Scene {
                     this.currentBird.specialUsed = true;
                     console.log('Black bird explode activated!');
                 }
+            } else if (this.currentBird.special === 'egg' && !this.currentBird.specialUsed) {
+                this.currentBird.dropEgg();
+                console.log('White bird drop egg activated!');
             }
             return;
         }
@@ -684,10 +758,14 @@ export class GameScene extends Phaser.Scene {
         const alivePigs = this.pigs.filter(p => p && p.active);
         
         if (alivePigs.length === 0) {
-            this.scene.start('GameOverScene', { 
-                won: true, 
-                score: this.score,
-                levelId: this.levelId 
+            this.showRemainingBirdsScore();
+            this.createNextLevelArrow();
+            this.time.delayedCall(2000, () => {
+                this.scene.start('GameOverScene', { 
+                    won: true, 
+                    score: this.score,
+                    levelId: this.levelId 
+                });
             });
             return true;
         }
@@ -695,15 +773,59 @@ export class GameScene extends Phaser.Scene {
         if (this.birdsRemaining === 0 && this.birdTypes.length === 0) {
             const allBirdsStopped = this.birds.every(b => !b || !b.active || b.isStopped());
             if (allBirdsStopped) {
-                this.scene.start('GameOverScene', { 
-                    won: false, 
-                    score: this.score,
-                    levelId: this.levelId 
+                this.showRemainingBirdsScore();
+                this.time.delayedCall(2000, () => {
+                    this.scene.start('GameOverScene', { 
+                        won: false, 
+                        score: this.score,
+                        levelId: this.levelId 
+                    });
                 });
                 return true;
             }
         }
         
         return false;
+    }
+    
+    showRemainingBirdsScore() {
+        const remainingBirds = this.birds.filter(b => b && b.active);
+        
+        remainingBirds.forEach(bird => {
+            if (bird) {
+                const birdColor = this.getBirdColor(bird.config.name);
+                
+                bird.setTint(birdColor);
+                
+                const scoreText = this.add.text(bird.x, bird.y - 50, '10000', {
+                    fontSize: '24px',
+                    fontFamily: 'Arial',
+                    color: this.getColorHex(birdColor),
+                    stroke: '#000000',
+                    strokeThickness: 3
+                });
+                
+                this.tweens.add({
+                    targets: scoreText,
+                    y: bird.y - 100,
+                    alpha: 0,
+                    duration: 2000,
+                    onComplete: () => scoreText.destroy()
+                });
+                
+                this.updateScore(10000);
+            }
+        });
+    }
+    
+    getBirdColor(birdType) {
+        const colorMap = {
+            red: 0xff0000,
+            blue: 0x0000ff,
+            yellow: 0xffff00,
+            black: 0x000000,
+            white: 0xffffff
+        };
+        return colorMap[birdType] || 0xffffff;
     }
 }

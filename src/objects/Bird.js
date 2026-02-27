@@ -35,8 +35,21 @@ export class Bird extends Phaser.Physics.Matter.Sprite {
         super.preUpdate(time, delta);
         
         if (this.isLaunched && this.active) {
-            if (this.x < -50 || this.x > 1330 || this.y < -50 || this.y > 770) {
-                this.destroy();
+            // 边界碰撞检测 - 反弹而不是销毁
+            if (this.x < 0) {
+                this.setPosition(0, this.y);
+                this.setVelocityX(Math.abs(this.body.velocity.x) * 0.8);
+            } else if (this.x > 1280) {
+                this.setPosition(1280, this.y);
+                this.setVelocityX(-Math.abs(this.body.velocity.x) * 0.8);
+            }
+            
+            if (this.y < 0) {
+                this.setPosition(this.x, 0);
+                this.setVelocityY(Math.abs(this.body.velocity.y) * 0.8);
+            } else if (this.y > 720) {
+                this.setPosition(this.x, 720);
+                this.setVelocityY(-Math.abs(this.body.velocity.y) * 0.8);
             }
         }
     }
@@ -165,12 +178,91 @@ export class Bird extends Phaser.Physics.Matter.Sprite {
     }
 
     dropEgg() {
+        if (this.specialUsed) return;
+        this.specialUsed = true;
+        
         const egg = this.scene.matter.add.circle(this.x, this.y, 10, {
             label: 'egg',
-            density: 0.01
+            density: 0.05
         });
         
+        egg.setVelocity(this.body.velocity.x, this.body.velocity.y + 10);
+        
+        // 为鸡蛋添加碰撞检测
+        this.scene.matter.world.once('collisionstart', (event) => {
+            event.pairs.forEach(pair => {
+                if (pair.bodyA === egg.body || pair.bodyB === egg.body) {
+                    this.explodeEgg(egg);
+                }
+            });
+        });
+        
+        // 白鸟反冲
         this.setVelocity(this.body.velocity.x * -1.5, -10);
+    }
+    
+    explodeEgg(egg) {
+        const explosionRadius = 80;
+        const explosionForce = 20;
+        
+        // 爆炸效果
+        const explosionCircle = this.scene.add.circle(egg.x, egg.y, 0, 0xffff00, 0.6);
+        this.scene.tweens.add({
+            targets: explosionCircle,
+            radius: explosionRadius,
+            alpha: 0,
+            duration: 300,
+            onComplete: () => explosionCircle.destroy()
+        });
+        
+        // 粒子效果
+        for (let i = 0; i < 8; i++) {
+            const angle = (i / 8) * Math.PI * 2;
+            const particle = this.scene.add.circle(
+                egg.x + Math.cos(angle) * 15,
+                egg.y + Math.sin(angle) * 15,
+                5,
+                0xffff00
+            );
+            
+            this.scene.tweens.add({
+                targets: particle,
+                x: particle.x + Math.cos(angle) * 40,
+                y: particle.y + Math.sin(angle) * 40,
+                alpha: 0,
+                scale: 0,
+                duration: 300,
+                onComplete: () => particle.destroy()
+            });
+        }
+        
+        // 伤害猪
+        this.scene.pigs.forEach(pig => {
+            if (!pig || !pig.active) return;
+            const distance = Phaser.Math.Distance.Between(egg.x, egg.y, pig.x, pig.y);
+            if (distance < explosionRadius) {
+                const damage = Math.max(15, 40 - distance * 0.3);
+                pig.damage(damage);
+            }
+        });
+        
+        // 推动积木
+        this.scene.blocks.forEach(block => {
+            if (!block || !block.active) return;
+            const distance = Phaser.Math.Distance.Between(egg.x, egg.y, block.x, block.y);
+            if (distance < explosionRadius) {
+                const angle = Phaser.Math.Angle.Between(egg.x, egg.y, block.x, block.y);
+                const force = explosionForce * (1 - distance / explosionRadius);
+                block.setVelocity(
+                    Math.cos(angle) * force,
+                    Math.sin(angle) * force - 5
+                );
+                block.damage(8);
+            }
+        });
+        
+        // 销毁鸡蛋
+        egg.destroy();
     }
 
     isStopped() {

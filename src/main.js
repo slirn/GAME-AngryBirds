@@ -4,6 +4,7 @@ import { MenuScene } from './scenes/MenuScene.js';
 import { GameScene } from './scenes/GameScene.js';
 import { LevelSelectScene } from './scenes/LevelSelectScene.js';
 import { GameOverScene } from './scenes/GameOverScene.js';
+import { SettingsScene } from './scenes/SettingsScene.js';
 
 const config = {
     type: Phaser.AUTO,
@@ -19,7 +20,7 @@ const config = {
             enableSleeping: false
         }
     },
-    scene: [PreloadScene, MenuScene, LevelSelectScene, GameScene, GameOverScene],
+    scene: [PreloadScene, MenuScene, SettingsScene, LevelSelectScene, GameScene, GameOverScene],
     scale: {
         mode: Phaser.Scale.FIT,
         autoCenter: Phaser.Scale.CENTER_BOTH
